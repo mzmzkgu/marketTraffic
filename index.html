@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시장 신호반 · Market Signal Panel</title>
+<meta name="description" content="나스닥 · 비트코인 · 리플 · 금 · 달러 · 엔화 데일리 매수/매도 신호판">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171a;
+    --bg-grain: radial-gradient(circle at 1px 1px, rgba(255,255,255,.025) 1px, transparent 0);
+    --panel:#1d2124;
+    --panel-hi:#232830;
+    --border:#2c3236;
+    --border-lo:#25292d;
+    --brass:#c9a24d;
+    --brass-dim:#8a7238;
+    --ink:#eae6da;
+    --ink-dim:#9299a0;
+    --ink-faint:#5b6167;
+    --buy:#3ddc84;
+    --sell:#ff5c54;
+    --hold:#ffb648;
+    --off:#5b6167;
+    --radius:10px;
+    --font-ui:'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'IBM Plex Mono', 'Noto Sans Mono', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.02), transparent 200px),
+      var(--bg-grain),
+      var(--bg);
+    background-size: auto, 3px 3px, auto;
+    color:var(--ink);
+    font-family:var(--font-ui);
+    padding: 22px 14px 60px;
+    line-height:1.45;
+  }
+
+  .wrap{max-width:980px; margin:0 auto;}
+
+  /* ---------- 헤더 / 명판 ---------- */
+  header.plate{
+    position:relative;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, var(--panel-hi), var(--panel));
+    padding:18px 20px;
+    margin-bottom:14px;
+    overflow:hidden;
+  }
+  header.plate::before{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 40%, rgba(201,162,77,.05) 50%, transparent 60%);
+    pointer-events:none;
+  }
+  .plate-row{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px 16px;}
+  .brand{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .brand .en{
+    font-family:var(--font-mono); font-weight:600; letter-spacing:.14em;
+    font-size:11px; color:var(--brass); text-transform:uppercase;
+  }
+  .brand .kr{font-size:20px; font-weight:700; color:var(--ink);}
+  .updated{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);
+    display:flex; align-items:center; gap:8px;
+  }
+  .refresh-btn{
+    appearance:none; border:1px solid var(--border); background:var(--panel-hi);
+    color:var(--ink-dim); border-radius:6px; padding:4px 9px; font-family:var(--font-mono);
+    font-size:11px; cursor:pointer; transition:.15s;
+  }
+  .refresh-btn:hover{color:var(--brass); border-color:var(--brass-dim);}
+  .refresh-btn:focus-visible{outline:2px solid var(--brass); outline-offset:1px;}
+
+  /* ---------- 요약 스트립 ---------- */
+  .summary{
+    display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;
+  }
+  .summary .chip{
+    display:flex; align-items:center; gap:7px;
+    border:1px solid var(--border); border-radius:999px;
+    background:var(--panel); padding:6px 13px 6px 10px;
+    font-family:var(--font-mono); font-size:12.5px; color:var(--ink-dim);
+  }
+  .summary .chip b{color:var(--ink); font-weight:600;}
+  .dot{width:8px; height:8px; border-radius:50%; flex:none;}
+  .dot.buy{background:var(--buy); box-shadow:0 0 6px 1px rgba(61,220,132,.7);}
+  .dot.sell{background:var(--sell); box-shadow:0 0 6px 1px rgba(255,92,84,.7);}
+  .dot.hold{background:var(--hold); box-shadow:0 0 6px 1px rgba(255,182,72,.7);}
+
+  /* ---------- 카드 그리드 ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(255px, 1fr));
+    gap:12px;
+    margin-top:14px;
+  }
+
+  .card{
+    position:relative;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, var(--panel-hi) 0%, var(--panel) 100%);
+    padding:16px 16px 14px;
+    opacity:0;
+    animation:power-on .55s ease forwards;
+    transition:border-color .2s, transform .2s;
+  }
+  .card::after{ /* 리벳 */
+    content:""; position:absolute; top:9px; right:9px;
+    width:4px; height:4px; border-radius:50%;
+    background:rgba(255,255,255,.06);
+    box-shadow:
+      -1px -1px 0 rgba(0,0,0,.35) inset,
+      0 90px 0 0 transparent;
+  }
+  .card:hover{border-color:var(--border-lo); transform:translateY(-1px);}
+
+  @keyframes power-on{
+    from{opacity:0; transform:translateY(4px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  .card-top{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+
+  .lamp{
+    position:relative; flex:none;
+    width:15px; height:15px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff8, transparent 45%), var(--lamp-color, var(--off));
+    box-shadow:0 0 9px 2.5px var(--lamp-glow, transparent), inset 0 0 2px rgba(0,0,0,.4);
+    animation:breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{filter:brightness(1);}
+    50%{filter:brightness(1.28);}
+  }
+
+  .name-block{display:flex; flex-direction:column; line-height:1.25;}
+  .name-block .kr{font-size:15.5px; font-weight:600; color:var(--ink);}
+  .name-block .ticker{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.09em;
+    color:var(--brass); text-transform:uppercase;
+  }
+
+  .price{
+    font-family:var(--font-mono); font-weight:600;
+    font-size:24px; color:var(--ink);
+    margin:2px 0 10px;
+    word-break:break-word;
+  }
+
+  .rule{height:1px; background:var(--border-lo); margin:10px 0;}
+
+  .stat-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:12.5px; padding:3px 0; gap:10px;
+  }
+  .stat-row .label{color:var(--ink-faint);}
+  .stat-row .value{font-family:var(--font-mono); color:var(--ink-dim); text-align:right;}
+  .stat-row .value.strong{color:var(--ink);}
+  .stat-row .value.neg{color:var(--sell);}
+
+  .badge-inline{
+    font-family:var(--font-mono); font-size:10.5px; padding:1.5px 6px;
+    border-radius:4px; border:1px solid currentColor; margin-left:6px;
+  }
+
+  .signal-chip{
+    margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px;
+    padding:8px 10px; border-radius:7px; font-weight:600; font-size:13.5px;
+    border:1px solid var(--chip-border, var(--border));
+    background:var(--chip-bg, transparent);
+    color:var(--chip-color, var(--ink-dim));
+  }
+
+  .foot{
+    margin-top:26px; padding-top:14px; border-top:1px solid var(--border-lo);
+    font-size:11.5px; color:var(--ink-faint); text-align:center; line-height:1.7;
+  }
+  .foot a{color:var(--ink-faint);}
+
+  .err-banner{
+    border:1px solid #5c2c2c; background:#241717; color:#ffb0ab;
+    border-radius:var(--radius); padding:14px 16px; font-size:13px; margin-top:14px;
+  }
+
+  @media (max-width:480px){
+    .brand .kr{font-size:18px;}
+    .price{font-size:21px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{animation:none; opacity:1;}
+    .lamp{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="plate">
+    <div class="plate-row">
+      <div class="brand">
+        <span class="en">Market Signal Panel</span>
+        <span class="kr">시장 신호반</span>
+      </div>
+      <div class="updated">
+        <span id="updatedAt">불러오는 중…</span>
+        <button class="refresh-btn" id="refreshBtn" type="button">↻ 새로고침</button>
+      </div>
+    </div>
+    <div class="summary" id="summary"></div>
+  </header>
+
+  <div id="errArea"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="foot">
+    참고용 신호일 뿐 자동으로 매매를 실행하지 않습니다 · 나스닥/코인 = Fear&nbsp;&amp;&nbsp;Greed 극단 진입 기준 · 금·달러·엔화 = 이동평균선 기준<br>
+    데이터: CNN Fear&nbsp;&amp;&nbsp;Greed · alternative.me · Upbit · Stooq
+  </div>
+</div>
+
+<script>
+const TICKER = {
+  nasdaq:'NDX · 나스닥종합', bitcoin:'KRW-BTC', xrp:'KRW-XRP',
+  gold:'XAU/USD', usdkrw:'USD/KRW', jpykrw:'JPY/KRW ×100'
+};
+const ORDER = ['nasdaq','bitcoin','xrp','gold','usdkrw','jpykrw'];
+const RATING_KR = {
+  'extreme fear':'극단적 공포', 'fear':'공포', 'neutral':'중립',
+  'greed':'탐욕', 'extreme greed':'극단적 탐욕'
+};
+const SIGNAL_META = {
+  buy:  {color:'var(--buy)',  glow:'rgba(61,220,132,.65)',  text:'매수',        chipBg:'rgba(61,220,132,.08)',  chipColor:'var(--buy)',  chipBorder:'rgba(61,220,132,.35)'},
+  sell: {color:'var(--sell)', glow:'rgba(255,92,84,.65)',   text:'매도 (부분)', chipBg:'rgba(255,92,84,.08)',   chipColor:'var(--sell)', chipBorder:'rgba(255,92,84,.35)'},
+  hold: {color:'var(--hold)', glow:'rgba(255,182,72,.6)',   text:'관망',        chipBg:'rgba(255,182,72,.07)',  chipColor:'var(--hold)', chipBorder:'rgba(255,182,72,.3)'},
+  unknown:{color:'var(--off)', glow:'transparent',          text:'일시 오류',   chipBg:'transparent',           chipColor:'var(--ink-faint)', chipBorder:'var(--border)'}
+};
+
+function fmt(x, digits){
+  if (x === null || x === undefined || Number.isNaN(x)) return '—';
+  return Number(x).toLocaleString('ko-KR', {minimumFractionDigits:digits, maximumFractionDigits:digits});
+}
+function fmtKRWBig(x){
+  if (x === null || x === undefined) return '—';
+  const n = Math.round(x);
+  const eok = Math.floor(n / 1e8);
+  const man = Math.floor((n % 1e8) / 1e4);
+  const won = n % 1e4;
+  const parts = [];
+  if (eok) parts.push(eok.toLocaleString('ko-KR') + '억');
+  if (man) parts.push(man.toLocaleString('ko-KR') + '만');
+  if (!eok && !man) parts.push(won.toLocaleString('ko-KR'));
+  else if (won) parts.push(won.toLocaleString('ko-KR'));
+  return parts.join(' ') + '원';
+}
+
+const PRICE_FMT = {
+  nasdaq:  v => fmt(v,2) + ' pt',
+  bitcoin: v => fmtKRWBig(v),
+  xrp:     v => fmt(v,1) + '원',
+  gold:    v => '$' + fmt(v,2),
+  usdkrw:  v => fmt(v,2) + '원',
+  jpykrw:  v => fmt(v,2) + '원',
+};
+const HIGH_FMT = PRICE_FMT; // 365일 최고가도 동일 포맷 사용
+
+function cardHTML(key, a){
+  const meta = SIGNAL_META[a.signal] || SIGNAL_META.unknown;
+  const priceStr = a.price != null ? PRICE_FMT[key](a.price) : '—';
+  const highStr  = a.high_365d != null ? HIGH_FMT[key](a.high_365d) : '—';
+  const mddStr   = a.mdd_pct != null ? fmt(a.mdd_pct,2) + '%' : '—';
+
+  let midRows = '';
+  if (a.driver === 'fear_greed'){
+    const ratingKr = a.fg_rating ? (RATING_KR[a.fg_rating] || a.fg_rating) : '—';
+    const scoreStr = a.fg_score != null ? fmt(a.fg_score,0) : '—';
+    midRows = `
+      <div class="stat-row"><span class="label">공포·탐욕 지수</span>
+        <span class="value strong">${scoreStr} <span class="badge-inline" style="color:${meta.color}">${ratingKr}</span></span>
+      </div>`;
+  } else if (a.driver === 'moving_average'){
+    const aligned = (a.ma5!=null && a.ma20!=null && a.ma60!=null && a.ma120!=null)
+      ? (a.ma5>a.ma20 && a.ma20>a.ma60 && a.ma60>a.ma120) : null;
+    const vsMa120 = (a.price!=null && a.ma120) ? ((a.price/a.ma120-1)*100) : null;
+    midRows = `
+      <div class="stat-row"><span class="label">120일선 대비</span>
+        <span class="value ${vsMa120<0?'neg':'strong'}">${vsMa120!=null? (vsMa120>=0?'+':'')+fmt(vsMa120,2)+'%' : '—'}</span>
+      </div>
+      <div class="stat-row"><span class="label">이동평균 정배열</span>
+        <span class="value">${aligned===null?'—':(aligned?'정배열 ✓':'비정배열')}</span>
+      </div>
+      <div class="stat-row"><span class="label">RSI(14) 참고</span>
+        <span class="value">${a.rsi14!=null?fmt(a.rsi14,1):'—'}</span>
+      </div>`;
+  }
+
+  return `
+    <div class="card" style="--lamp-color:${meta.color}; --lamp-glow:${meta.glow}">
+      <div class="card-top">
+        <span class="lamp"></span>
+        <div class="name-block">
+          <span class="kr">${a.name_kr}</span>
+          <span class="ticker">${TICKER[key] || ''}</span>
+        </div>
+      </div>
+      <div class="price">${priceStr}</div>
+      ${midRows}
+      <div class="rule"></div>
+      <div class="stat-row"><span class="label">365일 최고</span><span class="value">${highStr}</span></div>
+      <div class="stat-row"><span class="label">고점 대비</span><span class="value ${a.mdd_pct<0?'neg':''}">${mddStr}</span></div>
+      <div class="signal-chip" style="--chip-bg:${meta.chipBg}; --chip-color:${meta.chipColor}; --chip-border:${meta.chipBorder}">
+        ${meta.text}
+      </div>
+    </div>`;
+}
+
+function render(data){
+  const grid = document.getElementById('grid');
+  const assets = data.assets || {};
+  grid.innerHTML = ORDER.filter(k => assets[k]).map(k => cardHTML(k, assets[k])).join('');
+  [...grid.children].forEach((el,i) => el.style.animationDelay = (i*70)+'ms');
+
+  const counts = {buy:0, hold:0, sell:0};
+  Object.values(assets).forEach(a => { if(counts[a.signal] !== undefined) counts[a.signal]++; });
+  document.getElementById('summary').innerHTML = `
+    <span class="chip"><span class="dot buy"></span>매수 <b>${counts.buy}</b></span>
+    <span class="chip"><span class="dot hold"></span>관망 <b>${counts.hold}</b></span>
+    <span class="chip"><span class="dot sell"></span>매도 <b>${counts.sell}</b></span>
+  `;
+
+  if (data.updated_at){
+    const d = new Date(data.updated_at);
+    const s = d.toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    document.getElementById('updatedAt').textContent = '마지막 갱신 ' + s;
+  } else {
+    document.getElementById('updatedAt').textContent = '';
+  }
+  document.getElementById('errArea').innerHTML = '';
+}
+
+async function load(){
+  document.getElementById('updatedAt').textContent = '불러오는 중…';
+  try{
+    const res = await fetch('./signals.json', {cache:'no-store'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    render(data);
+  } catch(e){
+    document.getElementById('errArea').innerHTML =
+      `<div class="err-banner">signals.json을 불러오지 못했어요 (${e.message}). 백엔드 스크립트가 아직 한 번도 안 돌았거나, 로컬에서 file://로 직접 열었을 수 있어요 — GitHub Pages 배포 후 확인해보세요.</div>`;
+    document.getElementById('updatedAt').textContent = '';
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>
