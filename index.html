@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>시장 신호반 · Market Signal Panel</title>
+<title>매매 신호등</title>
 <meta name="description" content="나스닥 · 비트코인 · 리플 · 금 · 달러 · 엔화 데일리 매수/매도 신호판">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3QgeD0iOCIgeT0iMiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjI4IiByeD0iNSIgZmlsbD0iIzE0MTcxYSIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iOSIgcj0iNC4yIiBmaWxsPSIjZmY1YzU0Ii8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNC4yIiBmaWxsPSIjZmZiNjQ4Ii8+PGNpcmNsZSBjeD0iMTYiIGN5PSIyMyIgcj0iNC4yIiBmaWxsPSIjM2RkYzg0Ii8+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -52,8 +53,8 @@
   }
   .h1{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
   .brand{
-    font-family:var(--font-mono); font-weight:600; letter-spacing:.09em;
-    font-size:13px; color:var(--brass); text-transform:uppercase; white-space:nowrap;
+    font-family:var(--font-ui); font-weight:700;
+    font-size:15.5px; color:var(--brass); white-space:nowrap;
   }
   .updated-wrap{display:flex; align-items:center; gap:7px; white-space:nowrap;}
   #updatedAt{font-family:var(--font-mono); font-size:11px; color:var(--ink-dim);}
@@ -78,13 +79,18 @@
   .list{display:flex; flex-direction:column; gap:6px;}
 
   .row{
+    display:block; text-decoration:none; color:inherit;
     border:1px solid var(--border);
     border-left:3px solid var(--row-color, var(--off));
     border-radius:6px;
     background:linear-gradient(180deg, var(--panel-hi), var(--panel));
     padding:8px 12px 8px 11px;
     opacity:0; animation:slide-in .4s ease forwards;
+    transition:background .15s, border-color .15s;
   }
+  .row:hover{border-color:var(--border-lo); background:linear-gradient(180deg, #262b32, #1f2327);}
+  .row:active{background:linear-gradient(180deg, #191d20, #191d20);}
+  .row:focus-visible{outline:2px solid var(--brass); outline-offset:1px;}
   @keyframes slide-in{
     from{opacity:0; transform:translateX(-3px);}
     to{opacity:1; transform:translateX(0);}
@@ -102,7 +108,7 @@
     padding:2px 8px; border-radius:4px; white-space:nowrap;
   }
 
-  .row-stats{display:flex; gap:16px; margin-top:4px; font-family:var(--font-mono); font-size:12px;}
+  .row-stats{display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:4px; font-family:var(--font-mono); font-size:11.5px;}
   .row-stats .lbl{color:var(--ink-faint); font-size:9.5px; margin-right:3px;}
   .row-stats .val{color:var(--ink-dim);}
   .row-stats .val.neg{color:var(--sell);}
@@ -120,7 +126,7 @@
   @media (max-width:360px){
     .row-name{font-size:13.5px;}
     .row-badge, .row-signal{font-size:10px;}
-    .row-stats{gap:12px; font-size:11.5px;}
+    .row-stats{gap:3px 10px; font-size:11px;}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -133,7 +139,7 @@
 
   <header class="plate">
     <div class="h1">
-      <span class="brand">Market Signal</span>
+      <span class="brand">매매 신호등</span>
       <span class="updated-wrap">
         <span id="updatedAt">불러오는 중…</span>
         <button class="refresh-btn" id="refreshBtn" type="button" aria-label="새로고침">↻</button>
@@ -152,6 +158,14 @@
 
 <script>
 const ORDER = ['nasdaq','bitcoin','xrp','gold','usdkrw','jpykrw'];
+const LINKS = {
+  nasdaq:  'https://m.stock.naver.com/worldstock/index/.IXIC/total',
+  bitcoin: 'https://m.stock.naver.com/crypto/UPBIT/BTC/total',
+  xrp:     'https://m.stock.naver.com/crypto/UPBIT/XRP/total',
+  gold:    'https://m.stock.naver.com/marketindex/metals/GCcv1',
+  usdkrw:  'https://m.stock.naver.com/marketindex/exchange/FX_USDKRW',
+  jpykrw:  'https://m.stock.naver.com/marketindex/exchange/FX_JPYKRW',
+};
 const RATING_KR = {
   'extreme fear':'극단공포', 'fear':'공포', 'neutral':'중립',
   'greed':'탐욕', 'extreme greed':'극단탐욕'
@@ -168,18 +182,16 @@ function fmt(x, digits){
   return Number(x).toLocaleString('ko-KR', {minimumFractionDigits:digits, maximumFractionDigits:digits});
 }
 
-function badgeText(key, a){
-  if (a.driver === 'fear_greed'){
-    if (a.fg_score == null) return '—';
-    const ratingKr = RATING_KR[a.fg_rating] || a.fg_rating || '';
-    return `${ratingKr} ${Math.round(a.fg_score)}`;
-  }
-  if (a.driver === 'moving_average'){
-    if (a.price == null || !a.ma120) return '—';
-    const vs = (a.price/a.ma120 - 1) * 100;
-    return `120일 ${vs>=0?'+':''}${fmt(vs,1)}%`;
-  }
-  return '—';
+function fgBadgeText(a){
+  if (a.fg_score == null) return '—';
+  const ratingKr = RATING_KR[a.fg_rating] || a.fg_rating || '';
+  return `${ratingKr} ${Math.round(a.fg_score)}`;
+}
+
+function ma120Text(a){
+  if (a.price == null || !a.ma120) return '—';
+  const vs = (a.price/a.ma120 - 1) * 100;
+  return `${vs>=0?'+':''}${fmt(vs,1)}%`;
 }
 
 function rowHTML(key, a){
@@ -187,13 +199,22 @@ function rowHTML(key, a){
   const price = a.price != null ? fmt(a.price,0) : '—';
   const high  = a.high_365d != null ? fmt(a.high_365d,0) : '—';
   const mdd   = a.mdd_pct != null ? fmt(a.mdd_pct,2)+'%' : '—';
+  const href  = LINKS[key] || '#';
+
+  const topBadge = a.driver === 'fear_greed'
+    ? `<span class="row-badge">${fgBadgeText(a)}</span>`
+    : '';
+
+  const ma120Stat = a.driver === 'moving_average'
+    ? `<span><span class="lbl">120일</span><span class="val">${ma120Text(a)}</span></span>`
+    : '';
 
   return `
-    <div class="row" style="--row-color:${meta.color}">
+    <a class="row" href="${href}" target="_blank" rel="noopener noreferrer" style="--row-color:${meta.color}">
       <div class="row-top">
         <span class="row-name">${a.name_kr}</span>
         <span class="row-right">
-          <span class="row-badge">${badgeText(key,a)}</span>
+          ${topBadge}
           <span class="row-signal" style="background:${meta.chipBg}; color:${meta.chipColor}; border:1px solid ${meta.chipBorder}">${meta.text}</span>
         </span>
       </div>
@@ -201,8 +222,9 @@ function rowHTML(key, a){
         <span><span class="lbl">현재</span><span class="val">${price}</span></span>
         <span><span class="lbl">365최고</span><span class="val">${high}</span></span>
         <span><span class="lbl">MDD</span><span class="val ${a.mdd_pct<0?'neg':''}">${mdd}</span></span>
+        ${ma120Stat}
       </div>
-    </div>`;
+    </a>`;
 }
 
 function formatUpdated(iso){
