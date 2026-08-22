@@ -1,0 +1,4 @@
+.market_signal_updater.lock
+errorLog/
+__pycache__/
+*.pyc

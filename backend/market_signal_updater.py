@@ -15,6 +15,9 @@ signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하
                 그 외 -> 관망
   (+ 참고용으로 RSI(14)도 같이 계산해서 넣어줌. 대안 아이디어는 README 참고)
 
+시세 소스: 나스닥/금/달러/엔화 = 야후 파이낸스 v8 차트 API (query1/query2, apikey 불필요)
+          Stooq는 2026-04부터 apikey를 요구하도록 바뀌어서 더 이상 안 씀 (README 참고)
+
 사용법
 ------
     python3 market_signal_updater.py              # 계산 + signals.json 저장 + git push
@@ -30,13 +33,13 @@ signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하
 """
 
 import argparse
+import fcntl
 import json
 import logging
 import os
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
-from io import StringIO
 
 import pandas as pd
 import requests
@@ -57,12 +60,12 @@ HTTP_HEADERS = {
     "Accept": "application/json, text/plain, */*",
 }
 
-# Stooq 심볼 (직접 확인한 값들. 혹시 안 맞으면 --verify 로 먼저 점검해볼 것)
-STOOQ_SYMBOLS = {
-    "nasdaq": "^ndq",      # 나스닥 종합지수 (NASDAQ COMP)
-    "gold": "xauusd",      # 국제 금 현물가 (USD/트로이온스)
-    "usdkrw": "usdkrw",
-    "usdjpy": "usdjpy",
+# 야후 파이낸스 티커 (Stooq는 2026-04부터 apikey 필요해져서 교체함)
+YAHOO_SYMBOLS = {
+    "nasdaq": "^IXIC",     # 나스닥 종합지수
+    "gold": "GC=F",        # COMEX 금 선물 (국제 금 시세 프록시로 사용, 현물가와 거의 동일하게 움직임)
+    "usdkrw": "KRW=X",     # USD/KRW
+    "usdjpy": "JPY=X",     # USD/JPY
 }
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -212,24 +215,47 @@ def fetch_upbit_daily(market: str, days: int = LOOKBACK_DAYS) -> pd.DataFrame:
     return df[["date", "close"]].reset_index(drop=True)
 
 
-def fetch_stooq_daily(symbol: str) -> pd.DataFrame:
-    """Stooq 일봉 종가 CSV. (금 / 나스닥지수 / 원화-달러 / 원화-엔화 공용)"""
-    url = f"https://stooq.com/q/d/l/?s={symbol}&i=d"
-    r = requests.get(url, headers=HTTP_HEADERS, timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
-    text = r.text.strip()
+def fetch_yahoo_daily(symbol: str) -> pd.DataFrame:
+    """야후 파이낸스 v8 차트 API 일봉 종가. (나스닥지수 / 금 / 원화-달러 / 원화-엔화 공용)
 
-    if not text or "Date" not in text.splitlines()[0]:
-        raise ValueError(f"stooq 응답이 비정상: symbol={symbol}, 응답 앞부분={text[:80]!r}")
+    query1 -> 실패시 query2 순으로 시도 (야후가 두 호스트로 로드밸런싱하길래 폴백으로 활용).
+    이 차트(v8) 엔드포인트는 시세 조회(v7/quote)와 달리 crumb/쿠키 없이도 동작함.
+    """
+    params = {"range": "2y", "interval": "1d"}
+    last_err = None
 
-    df = pd.read_csv(StringIO(text))
-    if "Date" not in df.columns or "Close" not in df.columns:
-        raise ValueError(f"stooq CSV 컬럼이 예상과 다름: symbol={symbol}, columns={list(df.columns)}")
+    for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+        try:
+            url = f"https://{host}/v8/finance/chart/{symbol}"
+            r = requests.get(url, params=params, headers=HTTP_HEADERS, timeout=REQUEST_TIMEOUT)
+            r.raise_for_status()
+            payload = r.json()
 
-    df["date"] = pd.to_datetime(df["Date"])
-    df["close"] = df["Close"].astype(float)
-    df = df.dropna(subset=["close"]).sort_values("date")
-    return df[["date", "close"]].reset_index(drop=True)
+            result = payload.get("chart", {}).get("result")
+            if not result:
+                raise ValueError(f"result 없음 (error={payload.get('chart', {}).get('error')})")
+
+            node = result[0]
+            timestamps = node.get("timestamp")
+            quote = node.get("indicators", {}).get("quote", [{}])[0]
+            closes = quote.get("close")
+            if not timestamps or not closes:
+                raise ValueError("timestamp/close 필드 없음")
+
+            df = pd.DataFrame({
+                "date": pd.to_datetime(timestamps, unit="s").normalize(),
+                "close": closes,
+            })
+            df = df.dropna(subset=["close"]).sort_values("date").drop_duplicates(subset="date")
+            if df.empty:
+                raise ValueError("유효한 종가가 하나도 없음")
+            return df[["date", "close"]].reset_index(drop=True)
+
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            log.warning(f"야후 파이낸스 {host} 조회 실패 (symbol={symbol}): {e}")
+
+    raise ValueError(f"야후 파이낸스 조회 전체 실패: symbol={symbol}, 마지막 에러={last_err}")
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +379,7 @@ def compute_all_assets() -> dict:
     # 나스닥 (CNN F&G)
     try:
         score, rating = fetch_cnn_fear_greed()
-        df = fetch_stooq_daily(STOOQ_SYMBOLS["nasdaq"])
+        df = fetch_yahoo_daily(YAHOO_SYMBOLS["nasdaq"])
         assets["nasdaq"] = build_fng_asset("나스닥", df, score, rating, "pt", "나스닥종합지수")
     except Exception as e:  # noqa: BLE001
         log.error(f"[나스닥] 처리 실패: {e}")
@@ -372,7 +398,7 @@ def compute_all_assets() -> dict:
 
     # 금
     try:
-        gold_df = fetch_stooq_daily(STOOQ_SYMBOLS["gold"])
+        gold_df = fetch_yahoo_daily(YAHOO_SYMBOLS["gold"])
         assets["gold"] = build_ma_asset("금", gold_df, "USD", "트로이온스당")
     except Exception as e:  # noqa: BLE001
         log.error(f"[금] 처리 실패: {e}")
@@ -381,7 +407,7 @@ def compute_all_assets() -> dict:
     # 달러 (USD-KRW)
     usdkrw_df = None
     try:
-        usdkrw_df = fetch_stooq_daily(STOOQ_SYMBOLS["usdkrw"])
+        usdkrw_df = fetch_yahoo_daily(YAHOO_SYMBOLS["usdkrw"])
         assets["usdkrw"] = build_ma_asset("달러", usdkrw_df, "KRW", "1달러당")
     except Exception as e:  # noqa: BLE001
         log.error(f"[달러] 처리 실패: {e}")
@@ -389,9 +415,9 @@ def compute_all_assets() -> dict:
 
     # 엔화 (JPY-KRW = USDKRW / USDJPY * 100, 100엔당 원화로 표시)
     try:
-        usdjpy_df = fetch_stooq_daily(STOOQ_SYMBOLS["usdjpy"])
+        usdjpy_df = fetch_yahoo_daily(YAHOO_SYMBOLS["usdjpy"])
         if usdkrw_df is None:
-            usdkrw_df = fetch_stooq_daily(STOOQ_SYMBOLS["usdkrw"])
+            usdkrw_df = fetch_yahoo_daily(YAHOO_SYMBOLS["usdkrw"])
         merged = pd.merge(usdkrw_df, usdjpy_df, on="date", suffixes=("_krw", "_jpy"))
         merged["close"] = merged["close_krw"] / merged["close_jpy"] * 100
         assets["jpykrw"] = build_ma_asset("엔화", merged[["date", "close"]], "KRW", "100엔당")
@@ -402,6 +428,35 @@ def compute_all_assets() -> dict:
     return assets
 
 
+def acquire_lock(repo_dir: str):
+    """같은 스크립트가 겹쳐 돌지 않게 파일 락. 프로세스가 죽으면 OS가 알아서 풀어줌.
+    반환값을 변수에 계속 들고 있어야 락이 유지됨(가비지컬렉션되면 자동 해제).
+    """
+    lock_path = os.path.join(repo_dir, ".market_signal_updater.lock")
+    lock_file = open(lock_path, "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock_file.close()
+        return None
+    return lock_file
+
+
+def ensure_gitignore(repo_dir: str) -> None:
+    """락 파일 / 로그 / 파이썬 캐시가 실수로 커밋되지 않게 .gitignore를 보장해둠."""
+    gitignore_path = os.path.join(repo_dir, ".gitignore")
+    needed = [".market_signal_updater.lock", "errorLog/", "__pycache__/", "*.pyc"]
+    existing = ""
+    if os.path.exists(gitignore_path):
+        existing = open(gitignore_path, encoding="utf-8").read()
+    missing = [e for e in needed if e not in existing]
+    if missing:
+        with open(gitignore_path, "a", encoding="utf-8") as f:
+            if existing and not existing.endswith("\n"):
+                f.write("\n")
+            f.write("\n".join(missing) + "\n")
+
+
 def git_commit_and_push(repo_dir: str, message: str) -> None:
     def run(*args):
         return subprocess.run(
@@ -409,14 +464,17 @@ def git_commit_and_push(repo_dir: str, message: str) -> None:
             capture_output=True, text=True,
         )
 
-    add = run("add", "signals.json")
+    # -A로 바꾼 이유: signals.json만 add하면, 라파 로컬에서 이 스크립트 자체를 수정해도
+    # 그 변경분이 깃헙에 영영 안 올라가서 예전 코드가 원격에 남아있게 됨.
+    # (전에 reset --hard origin/main을 실행 초반에 넣었다가, 바로 이 문제 때문에
+    #  스크립트 자신이 원격의 구버전으로 되돌아가버리는 부작용이 있었음 — 그 로직은 제거함)
+    add = run("add", "-A")
     if add.returncode != 0:
         log.error(f"git add 실패: {add.stderr}")
         return
 
     commit = run("commit", "-m", message)
     if commit.returncode != 0:
-        # 변경사항이 없을 때도 non-zero 를 반환하므로 메시지로 구분
         if "nothing to commit" in (commit.stdout + commit.stderr):
             log.info("변경된 내용이 없어 커밋 생략")
             return
@@ -424,12 +482,26 @@ def git_commit_and_push(repo_dir: str, message: str) -> None:
         return
 
     push = run("push")
-    if push.returncode != 0:
-        log.error(f"git push 실패: {push.stderr}")
-        notify_telegram(f"⚠️ 시장 신호 대시보드 git push 실패\n{push.stderr[:300]}")
+    if push.returncode == 0:
+        log.info("git push 완료")
         return
 
-    log.info("git push 완료")
+    # non-fast-forward(다른 실행/깃헙 웹 수정 등으로 원격이 앞서있는 경우)면 pull로 합치고 한 번만 재시도.
+    # signals.json이 충돌나면 이번에 새로 계산한 값(우리 쪽)을 우선함 -X ours.
+    log.warning(f"git push 실패, pull 후 재시도: {push.stderr.strip()[:200]}")
+    pull = run("pull", "--no-edit", "--no-rebase", "-X", "ours")
+    if pull.returncode != 0:
+        log.error(f"git pull 실패: {pull.stderr}")
+        notify_telegram(f"⚠️ 시장 신호 대시보드 git pull 실패\n{pull.stderr[:300]}")
+        return
+
+    push2 = run("push")
+    if push2.returncode != 0:
+        log.error(f"재시도 git push도 실패: {push2.stderr}")
+        notify_telegram(f"⚠️ 시장 신호 대시보드 git push 재시도 실패\n{push2.stderr[:300]}")
+        return
+
+    log.info("재시도 후 git push 완료")
 
 
 def main():
@@ -441,6 +513,14 @@ def main():
 
     setup_logger(args.repo_dir)
     log.info("=== market_signal_updater 시작 ===")
+
+    lock = acquire_lock(args.repo_dir)
+    if lock is None:
+        log.warning("이미 다른 인스턴스가 실행 중이라 이번 실행은 건너뜀 (락 획득 실패)")
+        sys.exit(0)
+
+    if not args.no_push:
+        ensure_gitignore(args.repo_dir)
 
     try:
         assets = compute_all_assets()

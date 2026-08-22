@@ -1,15 +1,19 @@
 {
-  "updated_at": "2026-08-22T20:00:09.823833+09:00",
+  "updated_at": "2026-08-22T21:00:08.436688+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
       "driver": "fear_greed",
-      "signal": "unknown",
-      "signal_label": "일시 오류",
-      "price": null,
-      "high_365d": null,
-      "mdd_pct": null,
-      "as_of": null
+      "signal": "hold",
+      "signal_label": "관망",
+      "fg_score": 55.1714285714286,
+      "fg_rating": "greed",
+      "price": 26180.46,
+      "high_365d": 27093.9,
+      "mdd_pct": -3.37,
+      "as_of": "2026-08-21",
+      "currency": "pt",
+      "unit_note": "나스닥종합지수"
     },
     "bitcoin": {
       "name_kr": "비트코인",
@@ -18,9 +22,9 @@
       "signal_label": "관망",
       "fg_score": 71.0,
       "fg_rating": "greed",
-      "price": 104841000.0,
+      "price": 105504000.0,
       "high_365d": 178011000.0,
-      "mdd_pct": -41.1,
+      "mdd_pct": -40.73,
       "as_of": "2026-08-22",
       "currency": "KRW",
       "unit_note": ""
@@ -32,9 +36,9 @@
       "signal_label": "관망",
       "fg_score": 71.0,
       "fg_rating": "greed",
-      "price": 2022.0,
+      "price": 2035.0,
       "high_365d": 4324.0,
-      "mdd_pct": -53.24,
+      "mdd_pct": -52.94,
       "as_of": "2026-08-22",
       "currency": "KRW",
       "unit_note": ""
@@ -42,32 +46,53 @@
     "gold": {
       "name_kr": "금",
       "driver": "moving_average",
-      "signal": "unknown",
-      "signal_label": "일시 오류",
-      "price": null,
-      "high_365d": null,
-      "mdd_pct": null,
-      "as_of": null
+      "signal": "hold",
+      "signal_label": "관망",
+      "ma5": 4482.7199,
+      "ma20": 4278.18,
+      "ma60": 4212.9167,
+      "ma120": 4468.4125,
+      "rsi14": 87.3,
+      "price": 4624.1001,
+      "high_365d": 5318.3999,
+      "mdd_pct": -13.05,
+      "as_of": "2026-08-21",
+      "currency": "USD",
+      "unit_note": "트로이온스당"
     },
     "usdkrw": {
       "name_kr": "달러",
       "driver": "moving_average",
-      "signal": "unknown",
-      "signal_label": "일시 오류",
-      "price": null,
-      "high_365d": null,
-      "mdd_pct": null,
-      "as_of": null
+      "signal": "buy",
+      "signal_label": "매수",
+      "ma5": 1398.48,
+      "ma20": 1419.707,
+      "ma60": 1483.9287,
+      "ma120": 1485.9348,
+      "rsi14": 22.0,
+      "price": 1383.9,
+      "high_365d": 1554.48,
+      "mdd_pct": -10.97,
+      "as_of": "2026-08-22",
+      "currency": "KRW",
+      "unit_note": "1달러당"
     },
     "jpykrw": {
       "name_kr": "엔화",
       "driver": "moving_average",
-      "signal": "unknown",
-      "signal_label": "일시 오류",
-      "price": null,
-      "high_365d": null,
-      "mdd_pct": null,
-      "as_of": null
+      "signal": "buy",
+      "signal_label": "매수",
+      "ma5": 883.1919,
+      "ma20": 891.3798,
+      "ma60": 923.6693,
+      "ma120": 930.2153,
+      "rsi14": 6.2,
+      "price": 875.3549,
+      "high_365d": 1018.979,
+      "mdd_pct": -14.09,
+      "as_of": "2026-08-20",
+      "currency": "KRW",
+      "unit_note": "100엔당"
     }
   }
 }
