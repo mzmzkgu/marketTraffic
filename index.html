@@ -157,11 +157,12 @@
 </div>
 
 <script>
-const ORDER = ['nasdaq','bitcoin','xrp','gold','usdkrw','jpykrw'];
+const ORDER = ['nasdaq','bitcoin','xrp','kimchi_premium','gold','usdkrw','jpykrw'];
 const LINKS = {
   nasdaq:  'https://m.stock.naver.com/worldstock/index/.IXIC/total',
   bitcoin: 'https://m.stock.naver.com/crypto/UPBIT/BTC/total',
   xrp:     'https://m.stock.naver.com/crypto/UPBIT/XRP/total',
+  kimchi_premium: 'https://kimp.co.kr/',
   gold:    'https://m.stock.naver.com/marketindex/metals/GCcv1',
   usdkrw:  'https://m.stock.naver.com/marketindex/exchange/FX_USDKRW',
   jpykrw:  'https://m.stock.naver.com/marketindex/exchange/FX_JPYKRW',
@@ -196,18 +197,32 @@ function ma120Text(a){
 
 function rowHTML(key, a){
   const meta = SIGNAL_META[a.signal] || SIGNAL_META.unknown;
-  const price = a.price != null ? fmt(a.price,0) : '—';
-  const high  = a.high_365d != null ? fmt(a.high_365d,0) : '—';
-  const mdd   = a.mdd_pct != null ? fmt(a.mdd_pct,2)+'%' : '—';
   const href  = LINKS[key] || '#';
 
   const topBadge = a.driver === 'fear_greed'
     ? `<span class="row-badge">${fgBadgeText(a)}</span>`
     : '';
 
-  const ma120Stat = a.driver === 'moving_average'
-    ? `<span><span class="lbl">120일</span><span class="val">${ma120Text(a)}</span></span>`
-    : '';
+  let statsHTML;
+  if (a.driver === 'kimchi_premium'){
+    const signed = (v) => v != null ? `${v>=0?'+':''}${fmt(v,2)}%` : '—';
+    statsHTML = `
+      <span><span class="lbl">현재</span><span class="val ${a.premium_pct<0?'neg':''}">${signed(a.premium_pct)}</span></span>
+      <span><span class="lbl">365최고</span><span class="val">${signed(a.high_365d)}</span></span>
+      <span><span class="lbl">365최저</span><span class="val">${signed(a.low_365d)}</span></span>`;
+  } else {
+    const price = a.price != null ? fmt(a.price,0) : '—';
+    const high  = a.high_365d != null ? fmt(a.high_365d,0) : '—';
+    const mdd   = a.mdd_pct != null ? fmt(a.mdd_pct,2)+'%' : '—';
+    const ma120Stat = a.driver === 'moving_average'
+      ? `<span><span class="lbl">120일</span><span class="val">${ma120Text(a)}</span></span>`
+      : '';
+    statsHTML = `
+      <span><span class="lbl">현재</span><span class="val">${price}</span></span>
+      <span><span class="lbl">365최고</span><span class="val">${high}</span></span>
+      <span><span class="lbl">MDD</span><span class="val ${a.mdd_pct<0?'neg':''}">${mdd}</span></span>
+      ${ma120Stat}`;
+  }
 
   return `
     <a class="row" href="${href}" target="_blank" rel="noopener noreferrer" style="--row-color:${meta.color}">
@@ -219,10 +234,7 @@ function rowHTML(key, a){
         </span>
       </div>
       <div class="row-stats">
-        <span><span class="lbl">현재</span><span class="val">${price}</span></span>
-        <span><span class="lbl">365최고</span><span class="val">${high}</span></span>
-        <span><span class="lbl">MDD</span><span class="val ${a.mdd_pct<0?'neg':''}">${mdd}</span></span>
-        ${ma120Stat}
+        ${statsHTML}
       </div>
     </a>`;
 }
