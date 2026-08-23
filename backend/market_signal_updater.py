@@ -215,6 +215,28 @@ def fetch_upbit_daily(market: str, days: int = LOOKBACK_DAYS) -> pd.DataFrame:
     return df[["date", "close"]].reset_index(drop=True)
 
 
+def fetch_binance_daily(symbol: str = "BTCUSDT", days: int = LOOKBACK_DAYS) -> pd.DataFrame:
+    """바이낸스 일봉 종가. 김치프리미엄 계산용 해외 기준가. limit 1000까지 한 번에 되므로 페이지네이션 불필요."""
+    r = requests.get(
+        "https://api.binance.com/api/v3/klines",
+        params={"symbol": symbol, "interval": "1d", "limit": days},
+        headers=HTTP_HEADERS, timeout=REQUEST_TIMEOUT,
+    )
+    r.raise_for_status()
+    rows = r.json()
+    if not rows:
+        raise ValueError(f"바이낸스 캔들 데이터가 비어있음: {symbol}")
+
+    df = pd.DataFrame(rows, columns=[
+        "open_time", "open", "high", "low", "close", "volume", "close_time",
+        "quote_asset_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore",
+    ])
+    df["date"] = pd.to_datetime(df["open_time"], unit="ms").dt.normalize()
+    df["close"] = df["close"].astype(float)
+    df = df.sort_values("date").drop_duplicates(subset="date")
+    return df[["date", "close"]].reset_index(drop=True)
+
+
 def fetch_yahoo_daily(symbol: str) -> pd.DataFrame:
     """야후 파이낸스 v8 차트 API 일봉 종가. (나스닥지수 / 금 / 원화-달러 / 원화-엔화 공용)
 
@@ -369,6 +391,49 @@ def build_ma_asset(name_kr, df, currency, unit_note=""):
     }
 
 
+def build_kimchi_premium_asset(upbit_btc_df, binance_btc_df, usdkrw_df, days: int = 365):
+    """업비트 BTC/KRW vs 바이낸스 BTC/USDT(원화환산) 괴리율.
+    기준(사용자와 합의): +5% 이상 매도(부분), -5% 이하 매수, 그 사이 관망.
+    USD/KRW은 주말에 안 갱신되니 merge_asof로 가장 최근 환율을 끌어다 씀.
+    """
+    upbit = upbit_btc_df.rename(columns={"close": "close_krw"})
+    binance = binance_btc_df.rename(columns={"close": "close_usdt"})
+    fx = usdkrw_df.rename(columns={"close": "close_fx"}).sort_values("date")
+
+    merged = pd.merge(upbit, binance, on="date")
+    merged = pd.merge_asof(merged.sort_values("date"), fx, on="date", direction="backward")
+    merged = merged.dropna(subset=["close_krw", "close_usdt", "close_fx"])
+
+    if merged.empty:
+        raise ValueError("김치프리미엄 계산에 쓸 공통 날짜 데이터가 없음")
+
+    merged["premium"] = (merged["close_krw"] / (merged["close_usdt"] * merged["close_fx"]) - 1) * 100
+
+    recent = merged.tail(days)
+    current = float(recent["premium"].iloc[-1])
+    high = float(recent["premium"].max())
+    low = float(recent["premium"].min())
+    as_of = recent["date"].iloc[-1].strftime("%Y-%m-%d")
+
+    if current >= 5:
+        signal, label = "sell", "매도(부분)"
+    elif current <= -5:
+        signal, label = "buy", "매수"
+    else:
+        signal, label = "hold", "관망"
+
+    return {
+        "name_kr": "김프",
+        "driver": "kimchi_premium",
+        "signal": signal,
+        "signal_label": label,
+        "premium_pct": round(current, 2),
+        "high_365d": round(high, 2),
+        "low_365d": round(low, 2),
+        "as_of": as_of,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 메인
 # ---------------------------------------------------------------------------
@@ -395,6 +460,16 @@ def compute_all_assets() -> dict:
         except Exception as e:  # noqa: BLE001
             log.error(f"[{name}] 처리 실패: {e}")
             assets[key] = error_asset(name, "fear_greed")
+
+    # 김치프리미엄 (업비트 BTC vs 바이낸스 BTC, 원화환산 괴리율)
+    try:
+        kp_upbit_df = fetch_upbit_daily("KRW-BTC")
+        kp_binance_df = fetch_binance_daily("BTCUSDT")
+        kp_usdkrw_df = fetch_yahoo_daily(YAHOO_SYMBOLS["usdkrw"])
+        assets["kimchi_premium"] = build_kimchi_premium_asset(kp_upbit_df, kp_binance_df, kp_usdkrw_df)
+    except Exception as e:  # noqa: BLE001
+        log.error(f"[김프] 처리 실패: {e}")
+        assets["kimchi_premium"] = error_asset("김프", "kimchi_premium")
 
     # 금
     try:
