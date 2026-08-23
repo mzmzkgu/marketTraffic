@@ -396,12 +396,18 @@ def build_kimchi_premium_asset(upbit_btc_df, binance_btc_df, usdkrw_df, days: in
     기준(사용자와 합의): +5% 이상 매도(부분), -5% 이하 매수, 그 사이 관망.
     USD/KRW은 주말에 안 갱신되니 merge_asof로 가장 최근 환율을 끌어다 씀.
     """
-    upbit = upbit_btc_df.rename(columns={"close": "close_krw"})
-    binance = binance_btc_df.rename(columns={"close": "close_usdt"})
-    fx = usdkrw_df.rename(columns={"close": "close_fx"}).sort_values("date")
+    upbit = upbit_btc_df.rename(columns={"close": "close_krw"}).copy()
+    binance = binance_btc_df.rename(columns={"close": "close_usdt"}).copy()
+    fx = usdkrw_df.rename(columns={"close": "close_fx"}).copy()
+
+    # 업비트/바이낸스/야후 각각 날짜 파싱 방식이 달라 datetime64 정밀도(ns/us/ms)가
+    # 서로 다르게 추론될 수 있음 -> merge가 "정상 실행되지만 0건 매칭"으로 조용히 실패함.
+    # 세 소스 모두 datetime64[ns]로 명시 통일해서 이 문제를 원천 차단.
+    for d in (upbit, binance, fx):
+        d["date"] = d["date"].astype("datetime64[ns]")
 
     merged = pd.merge(upbit, binance, on="date")
-    merged = pd.merge_asof(merged.sort_values("date"), fx, on="date", direction="backward")
+    merged = pd.merge_asof(merged.sort_values("date"), fx.sort_values("date"), on="date", direction="backward")
     merged = merged.dropna(subset=["close_krw", "close_usdt", "close_fx"])
 
     if merged.empty:
