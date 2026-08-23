@@ -209,7 +209,7 @@ def fetch_upbit_daily(market: str, days: int = LOOKBACK_DAYS) -> pd.DataFrame:
         raise ValueError(f"업비트 캔들 데이터가 비어있음: {market}")
 
     df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["candle_date_time_kst"])
+    df["date"] = pd.to_datetime(df["candle_date_time_kst"]).dt.normalize()
     df["close"] = df["trade_price"].astype(float)
     df = df.sort_values("date").drop_duplicates(subset="date")
     return df[["date", "close"]].reset_index(drop=True)
