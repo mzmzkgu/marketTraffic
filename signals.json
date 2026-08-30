@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-30T23:00:09.985294+09:00",
+  "updated_at": "2026-08-31T00:00:09.711008+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -22,9 +22,9 @@
       "signal_label": "관망",
       "fg_score": 69.0,
       "fg_rating": "greed",
-      "price": 109612000.0,
+      "price": 109370000.0,
       "high_365d": 178011000.0,
-      "mdd_pct": -38.42,
+      "mdd_pct": -38.56,
       "as_of": "2026-08-30",
       "currency": "KRW",
       "unit_note": ""
@@ -36,9 +36,9 @@
       "signal_label": "관망",
       "fg_score": 69.0,
       "fg_rating": "greed",
-      "price": 1958.0,
+      "price": 1948.0,
       "high_365d": 4324.0,
-      "mdd_pct": -54.72,
+      "mdd_pct": -54.95,
       "as_of": "2026-08-30",
       "currency": "KRW",
       "unit_note": ""
@@ -48,7 +48,7 @@
       "driver": "kimchi_premium",
       "signal": "hold",
       "signal_label": "관망",
-      "premium_pct": 1.35,
+      "premium_pct": 0.9,
       "high_365d": 8.6,
       "low_365d": -3.5,
       "as_of": "2026-08-30"
@@ -75,14 +75,14 @@
       "driver": "moving_average",
       "signal": "buy",
       "signal_label": "매수",
-      "ma5": 1379.538,
-      "ma20": 1403.8365,
-      "ma60": 1471.4827,
-      "ma120": 1481.8836,
-      "rsi14": 13.9,
-      "price": 1371.5,
+      "ma5": 1380.372,
+      "ma20": 1404.045,
+      "ma60": 1471.5522,
+      "ma120": 1481.9183,
+      "rsi14": 14.8,
+      "price": 1375.67,
       "high_365d": 1554.48,
-      "mdd_pct": -11.77,
+      "mdd_pct": -11.5,
       "as_of": "2026-08-30",
       "currency": "KRW",
       "unit_note": "1달러당"
