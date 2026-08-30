@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-30T17:00:08.856755+09:00",
+  "updated_at": "2026-08-30T18:00:08.742862+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -22,9 +22,9 @@
       "signal_label": "관망",
       "fg_score": 69.0,
       "fg_rating": "greed",
-      "price": 108534000.0,
+      "price": 108475000.0,
       "high_365d": 178011000.0,
-      "mdd_pct": -39.03,
+      "mdd_pct": -39.06,
       "as_of": "2026-08-30",
       "currency": "KRW",
       "unit_note": ""
