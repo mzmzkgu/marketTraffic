@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-04T14:00:09.874625+09:00",
+  "updated_at": "2026-10-04T15:00:10.719706+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -22,9 +22,9 @@
       "signal_label": "관망",
       "fg_score": 65.0,
       "fg_rating": "greed",
-      "price": 115248000.0,
+      "price": 115347000.0,
       "high_365d": 178011000.0,
-      "mdd_pct": -35.26,
+      "mdd_pct": -35.2,
       "as_of": "2026-10-04",
       "currency": "KRW",
       "unit_note": ""
@@ -36,9 +36,9 @@
       "signal_label": "관망",
       "fg_score": 65.0,
       "fg_rating": "greed",
-      "price": 2025.0,
+      "price": 2026.0,
       "high_365d": 4262.0,
-      "mdd_pct": -52.49,
+      "mdd_pct": -52.46,
       "as_of": "2026-10-04",
       "currency": "KRW",
       "unit_note": ""
@@ -48,7 +48,7 @@
       "driver": "kimchi_premium",
       "signal": "hold",
       "signal_label": "관망",
-      "premium_pct": 1.22,
+      "premium_pct": 1.19,
       "high_365d": 8.6,
       "low_365d": -3.5,
       "as_of": "2026-10-04"
