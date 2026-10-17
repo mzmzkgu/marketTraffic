@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-17T08:00:11.496146+09:00",
+  "updated_at": "2026-10-17T09:00:11.967641+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -20,12 +20,12 @@
       "driver": "fear_greed",
       "signal": "hold",
       "signal_label": "관망",
-      "fg_score": 63.0,
+      "fg_score": 55.0,
       "fg_rating": "greed",
-      "price": 110460000.0,
+      "price": 110276000.0,
       "high_365d": 169514000.0,
-      "mdd_pct": -34.84,
-      "as_of": "2026-10-16",
+      "mdd_pct": -34.95,
+      "as_of": "2026-10-17",
       "currency": "KRW",
       "unit_note": ""
     },
@@ -34,12 +34,12 @@
       "driver": "fear_greed",
       "signal": "hold",
       "signal_label": "관망",
-      "fg_score": 63.0,
+      "fg_score": 55.0,
       "fg_rating": "greed",
-      "price": 1770.0,
+      "price": 1772.0,
       "high_365d": 3916.0,
-      "mdd_pct": -54.8,
-      "as_of": "2026-10-16",
+      "mdd_pct": -54.75,
+      "as_of": "2026-10-17",
       "currency": "KRW",
       "unit_note": ""
     },
@@ -48,10 +48,10 @@
       "driver": "kimchi_premium",
       "signal": "hold",
       "signal_label": "관망",
-      "premium_pct": 1.23,
-      "high_365d": 8.6,
+      "premium_pct": 1.28,
+      "high_365d": 7.83,
       "low_365d": -3.5,
-      "as_of": "2026-10-16"
+      "as_of": "2026-10-17"
     },
     "gold": {
       "name_kr": "금",
