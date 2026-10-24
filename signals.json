@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-24T22:00:10.133149+09:00",
+  "updated_at": "2026-10-24T23:00:09.942100+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -22,9 +22,9 @@
       "signal_label": "관망",
       "fg_score": 51.0,
       "fg_rating": "neutral",
-      "price": 108515000.0,
+      "price": 108400000.0,
       "high_365d": 169514000.0,
-      "mdd_pct": -35.98,
+      "mdd_pct": -36.05,
       "as_of": "2026-10-24",
       "currency": "KRW",
       "unit_note": ""
@@ -36,9 +36,9 @@
       "signal_label": "관망",
       "fg_score": 51.0,
       "fg_rating": "neutral",
-      "price": 1726.0,
+      "price": 1724.0,
       "high_365d": 3916.0,
-      "mdd_pct": -55.92,
+      "mdd_pct": -55.98,
       "as_of": "2026-10-24",
       "currency": "KRW",
       "unit_note": ""
