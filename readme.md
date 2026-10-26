@@ -67,7 +67,8 @@ export TELEGRAM_CHAT_ID="..."
 | 자산 | 신호 소스 | 가격/365일 소스 |
 |---|---|---|
 | 나스닥 | CNN F&G (직접 API, 실패시 feargreedchart.com) | Stooq `^ndq` |
-| 비트코인/리플 | alternative.me 코인 F&G (실패시 feargreedchart.com) | Upbit 일봉 |
+| 비트코인 | 현재가가 자기 120일선 위면 매수, 아래면 매도 (코인 F&G는 참고용 표시: alternative.me, 실패시 feargreedchart.com) | Upbit 일봉 |
+| 리플 | 비트코인 신호를 그대로 따라감 (가격·MDD는 리플 자기 값) | Upbit 일봉 |
 | 금 | 이동평균 | Stooq `xauusd` |
 | 달러 | 이동평균 | Stooq `usdkrw` |
 | 엔화 | 이동평균 | Stooq `usdkrw` ÷ `usdjpy` × 100 (100엔 기준) |
