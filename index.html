@@ -199,7 +199,7 @@ function rowHTML(key, a){
   const meta = SIGNAL_META[a.signal] || SIGNAL_META.unknown;
   const href  = LINKS[key] || '#';
 
-  const topBadge = a.driver === 'fear_greed'
+  const topBadge = a.fg_score != null
     ? `<span class="row-badge">${fgBadgeText(a)}</span>`
     : '';
 
@@ -214,7 +214,7 @@ function rowHTML(key, a){
     const price = a.price != null ? fmt(a.price,0) : '—';
     const high  = a.high_365d != null ? fmt(a.high_365d,0) : '—';
     const mdd   = a.mdd_pct != null ? fmt(a.mdd_pct,2)+'%' : '—';
-    const ma120Stat = a.driver === 'moving_average'
+    const ma120Stat = (a.driver === 'moving_average' || a.driver === 'trend_ma120')
       ? `<span><span class="lbl">120일</span><span class="val">${ma120Text(a)}</span></span>`
       : '';
     statsHTML = `
@@ -230,7 +230,7 @@ function rowHTML(key, a){
         <span class="row-name">${a.name_kr}</span>
         <span class="row-right">
           ${topBadge}
-          <span class="row-signal" style="background:${meta.chipBg}; color:${meta.chipColor}; border:1px solid ${meta.chipBorder}">${meta.text}</span>
+          <span class="row-signal" style="background:${meta.chipBg}; color:${meta.chipColor}; border:1px solid ${meta.chipBorder}">${a.signal_label || meta.text}</span>
         </span>
       </div>
       <div class="row-stats">

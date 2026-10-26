@@ -10,7 +10,7 @@ signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하
 신호 로직
 ---------
 - 나스닥      : CNN Fear & Greed  -> Extreme Fear 진입 시 매수 / Extreme Greed 진입 시 매도(부분)
-- 비트코인/리플: 코인 Fear & Greed -> Extreme Fear 진입 시 매수 / Extreme Greed 진입 시 매도(부분)
+- 비트코인/리플: 현재가가 자기 120일선 위면 매수 / 아래로 내려가면 매도 (코인 Fear & Greed 는 참고용으로만 표시)
 - 금/달러/엔화 : 현재가 < 120일선 -> 매수
                 현재가 > 5일선 > 20일선 > 60일선 > 120일선 (정배열) -> 매도(부분)
                 그 외 -> 관망
@@ -396,6 +396,39 @@ def build_ma_asset(name_kr, df, currency, unit_note=""):
     }
 
 
+def build_trend_asset(name_kr, df, currency, fg_score=None, fg_rating=None, unit_note=""):
+    """비트코인/리플 추세 신호 (사용자와 합의): 현재가가 120일선 위면 매수, 아래로 내려가면 매도.
+    코인 Fear & Greed 는 신호에 쓰지 않고 카드에 참고용으로만 같이 내려줌(조회 실패해도 신호엔 영향 없음).
+    """
+    current, high, mdd, as_of = price_stats(df)
+    ma120 = sma(df["close"], 120)
+
+    if ma120 is None:
+        signal, label = "unknown", "데이터 부족"
+    elif current > ma120:
+        signal, label = "buy", "매수"
+    elif current < ma120:
+        signal, label = "sell", "매도"
+    else:
+        signal, label = "hold", "관망"
+
+    return {
+        "name_kr": name_kr,
+        "driver": "trend_ma120",
+        "signal": signal,
+        "signal_label": label,
+        "ma120": round(ma120, 4) if ma120 is not None else None,
+        "fg_score": fg_score,
+        "fg_rating": fg_rating,
+        "price": round(current, 4),
+        "high_365d": round(high, 4),
+        "mdd_pct": round(mdd, 2) if mdd is not None else None,
+        "as_of": as_of,
+        "currency": currency,
+        "unit_note": unit_note,
+    }
+
+
 def build_kimchi_premium_asset(upbit_btc_df, binance_btc_df, usdkrw_df, days: int = 365):
     """업비트 BTC/KRW vs 바이낸스 BTC/USDT(원화환산) 괴리율.
     기준(사용자와 합의): +5% 이상 매도(부분), -5% 이하 매수, 그 사이 관망.
@@ -493,16 +526,16 @@ def compute_all_assets() -> dict:
         log.error(f"[나스닥] 처리 실패: {e}")
         assets["nasdaq"] = error_asset("나스닥", "fear_greed")
 
-    # 비트코인 / 리플 (코인 F&G 공용 조회 1회)
+    # 비트코인 / 리플 (신호는 120일선, 코인 F&G 는 참고용으로 공용 조회 1회)
     c_score, c_rating = fetch_crypto_fear_greed()
 
     for key, market, name in (("bitcoin", "KRW-BTC", "비트코인"), ("xrp", "KRW-XRP", "리플")):
         try:
             df = fetch_upbit_daily(market)
-            assets[key] = build_fng_asset(name, df, c_score, c_rating, "KRW")
+            assets[key] = build_trend_asset(name, df, "KRW", c_score, c_rating)
         except Exception as e:  # noqa: BLE001
             log.error(f"[{name}] 처리 실패: {e}")
-            assets[key] = error_asset(name, "fear_greed")
+            assets[key] = error_asset(name, "trend_ma120")
 
     # 김치프리미엄 (업비트 BTC vs 바이낸스 BTC, 원화환산 괴리율)
     try:
