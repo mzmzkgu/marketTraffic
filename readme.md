@@ -71,6 +71,7 @@ export TELEGRAM_CHAT_ID="..."
 | 금 | 이동평균 | Stooq `xauusd` |
 | 달러 | 이동평균 | Stooq `usdkrw` |
 | 엔화 | 이동평균 | Stooq `usdkrw` ÷ `usdjpy` × 100 (100엔 기준) |
+| 미국채 10년물 | 금리 5.0% 이상 매수, 그 외 관망 (매도 없음) | 야후 파이낸스 `^TNX` |
 
 Stooq 심볼은 직접 확인해서 넣었지만 외부 사이트라 언제든 바뀔 수 있음. 특정 자산만 계속 에러 나면 `backend/market_signal_updater.py` 상단 `STOOQ_SYMBOLS` 딕셔너리만 고치면 됨 (다른 로직 안 건드려도 됨). `https://stooq.com/q/d/?s=원하는심볼` 로 브라우저에서 먼저 확인 가능.
 

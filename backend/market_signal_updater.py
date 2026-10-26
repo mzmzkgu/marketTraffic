@@ -3,7 +3,8 @@
 """
 market_signal_updater.py
 =========================
-나스닥 / 비트코인 / 리플 / 금 / 달러(USD-KRW) / 엔화(JPY-KRW) 데일리 매수-매도 신호를 계산해서
+나스닥 / 비트코인 / 리플 / 김프 / 금 / 달러(USD-KRW) / 엔화(JPY-KRW) 데일리 매수-매도 신호와
+미국채 10년물 금리(참고용)를 계산해서
 signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하는 스크립트.
 
 신호 로직
@@ -14,8 +15,9 @@ signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하
                 현재가 > 5일선 > 20일선 > 60일선 > 120일선 (정배열) -> 매도(부분)
                 그 외 -> 관망
   (+ 참고용으로 RSI(14)도 같이 계산해서 넣어줌. 대안 아이디어는 README 참고)
+- 미국채 10년물: 금리가 5.0% 이상이면 매수, 그 외 관망 (매도 신호는 없음)
 
-시세 소스: 나스닥/금/달러/엔화 = 야후 파이낸스 v8 차트 API (query1/query2, apikey 불필요)
+시세 소스: 나스닥/금/달러/엔화/미국채 10년물 = 야후 파이낸스 v8 차트 API (query1/query2, apikey 불필요)
           Stooq는 2026-04부터 apikey를 요구하도록 바뀌어서 더 이상 안 씀 (README 참고)
 
 사용법
@@ -66,7 +68,10 @@ YAHOO_SYMBOLS = {
     "gold": "GC=F",        # COMEX 금 선물 (국제 금 시세 프록시로 사용, 현물가와 거의 동일하게 움직임)
     "usdkrw": "KRW=X",     # USD/KRW
     "usdjpy": "JPY=X",     # USD/JPY
+    "us10y": "^TNX",       # 미국채 10년물 금리 (% 단위, 예: 4.25)
 }
+
+US10Y_BUY_YIELD = 5.0   # 미국채 10년물 금리가 이 값(%) 이상이면 매수 (사용자와 합의)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -440,6 +445,38 @@ def build_kimchi_premium_asset(upbit_btc_df, binance_btc_df, usdkrw_df, days: in
     }
 
 
+def build_yield_asset(name_kr, df, days: int = 365):
+    """미국채 10년물 금리(%). 기준(사용자와 합의): 금리 5.0% 이상 매수, 그 외 관망 (매도 신호 없음).
+    야후 ^TNX 는 요즘 4.25 처럼 % 그대로 오지만, 옛 표기(x10, 예: 42.5)로 오면 10으로 나눠서 맞춤.
+    """
+    df = df.copy()
+    if float(df["close"].iloc[-1]) > 20:
+        log.warning(f"[{name_kr}] 금리 값이 20을 넘어 x10 표기로 보고 10으로 나눔")
+        df["close"] = df["close"] / 10
+
+    recent = df.tail(days)
+    current = float(recent["close"].iloc[-1])
+    high = float(recent["close"].max())
+    low = float(recent["close"].min())
+    as_of = recent["date"].iloc[-1].strftime("%Y-%m-%d")
+
+    if current >= US10Y_BUY_YIELD:
+        signal, label = "buy", "매수"
+    else:
+        signal, label = "hold", "관망"
+
+    return {
+        "name_kr": name_kr,
+        "driver": "yield_level",
+        "signal": signal,
+        "signal_label": label,
+        "yield_pct": round(current, 3),
+        "high_365d": round(high, 3),
+        "low_365d": round(low, 3),
+        "as_of": as_of,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 메인
 # ---------------------------------------------------------------------------
@@ -505,6 +542,14 @@ def compute_all_assets() -> dict:
     except Exception as e:  # noqa: BLE001
         log.error(f"[엔화] 처리 실패: {e}")
         assets["jpykrw"] = error_asset("엔화", "moving_average")
+
+    # 미국채 10년물 금리 (5.0% 이상 매수, 그 외 관망)
+    try:
+        us10y_df = fetch_yahoo_daily(YAHOO_SYMBOLS["us10y"])
+        assets["us10y"] = build_yield_asset("미국채 10년물", us10y_df)
+    except Exception as e:  # noqa: BLE001
+        log.error(f"[미국채 10년물] 처리 실패: {e}")
+        assets["us10y"] = error_asset("미국채 10년물", "yield_level")
 
     return assets
 
