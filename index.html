@@ -214,9 +214,13 @@ function rowHTML(key, a){
     const price = a.price != null ? fmt(a.price,0) : '—';
     const high  = a.high_365d != null ? fmt(a.high_365d,0) : '—';
     const mdd   = a.mdd_pct != null ? fmt(a.mdd_pct,2)+'%' : '—';
-    const ma120Stat = (a.driver === 'moving_average' || a.driver === 'trend_ma120')
+    let ma120Stat = (a.driver === 'moving_average' || a.driver === 'trend_ma120')
       ? `<span><span class="lbl">120일</span><span class="val">${ma120Text(a)}</span></span>`
       : '';
+    if (a.driver === 'follow_asset' && a.ref_price != null && a.ref_ma120){
+      const vs = (a.ref_price/a.ref_ma120 - 1) * 100;
+      ma120Stat = `<span><span class="lbl">${a.follows} 120일</span><span class="val">${vs>=0?'+':''}${fmt(vs,1)}%</span></span>`;
+    }
     statsHTML = `
       <span><span class="lbl">현재</span><span class="val">${price}</span></span>
       <span><span class="lbl">365최고</span><span class="val">${high}</span></span>

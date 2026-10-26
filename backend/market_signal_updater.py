@@ -10,7 +10,8 @@ signals.json 으로 저장하고, 깃허브 저장소에 커밋+푸시까지 하
 신호 로직
 ---------
 - 나스닥      : CNN Fear & Greed  -> Extreme Fear 진입 시 매수 / Extreme Greed 진입 시 매도(부분)
-- 비트코인/리플: 현재가가 자기 120일선 위면 매수 / 아래로 내려가면 매도 (코인 Fear & Greed 는 참고용으로만 표시)
+- 비트코인    : 현재가가 자기 120일선 위면 매수 / 아래로 내려가면 매도 (코인 Fear & Greed 는 참고용으로만 표시)
+- 리플        : 비트코인 신호를 그대로 따라감 (메이저 코인인 비트코인에 대응되므로)
 - 금/달러/엔화 : 현재가 < 120일선 -> 매수
                 현재가 > 5일선 > 20일선 > 60일선 > 120일선 (정배열) -> 매도(부분)
                 그 외 -> 관망
@@ -397,7 +398,7 @@ def build_ma_asset(name_kr, df, currency, unit_note=""):
 
 
 def build_trend_asset(name_kr, df, currency, fg_score=None, fg_rating=None, unit_note=""):
-    """비트코인/리플 추세 신호 (사용자와 합의): 현재가가 120일선 위면 매수, 아래로 내려가면 매도.
+    """비트코인 추세 신호 (사용자와 합의): 현재가가 120일선 위면 매수, 아래로 내려가면 매도.
     코인 Fear & Greed 는 신호에 쓰지 않고 카드에 참고용으로만 같이 내려줌(조회 실패해도 신호엔 영향 없음).
     """
     current, high, mdd, as_of = price_stats(df)
@@ -418,6 +419,32 @@ def build_trend_asset(name_kr, df, currency, fg_score=None, fg_rating=None, unit
         "signal": signal,
         "signal_label": label,
         "ma120": round(ma120, 4) if ma120 is not None else None,
+        "fg_score": fg_score,
+        "fg_rating": fg_rating,
+        "price": round(current, 4),
+        "high_365d": round(high, 4),
+        "mdd_pct": round(mdd, 2) if mdd is not None else None,
+        "as_of": as_of,
+        "currency": currency,
+        "unit_note": unit_note,
+    }
+
+
+def build_follow_asset(name_kr, df, currency, leader, fg_score=None, fg_rating=None, unit_note=""):
+    """다른 자산(leader, 여기선 비트코인)의 신호를 그대로 따라가는 자산 (사용자와 합의: 리플은 비트코인 신호를 따라감).
+    가격/MDD 는 자기 값을 쓰고, 신호와 120일선 비교 근거(ref_*)는 leader 의 것을 내려줌.
+    leader 가 오류/데이터 부족이면 따라가는 쪽도 신호 없음(unknown)이 됨.
+    """
+    current, high, mdd, as_of = price_stats(df)
+
+    return {
+        "name_kr": name_kr,
+        "driver": "follow_asset",
+        "signal": leader.get("signal", "unknown"),
+        "signal_label": leader.get("signal_label", "일시 오류"),
+        "follows": leader.get("name_kr"),
+        "ref_price": leader.get("price"),
+        "ref_ma120": leader.get("ma120"),
         "fg_score": fg_score,
         "fg_rating": fg_rating,
         "price": round(current, 4),
@@ -526,16 +553,22 @@ def compute_all_assets() -> dict:
         log.error(f"[나스닥] 처리 실패: {e}")
         assets["nasdaq"] = error_asset("나스닥", "fear_greed")
 
-    # 비트코인 / 리플 (신호는 120일선, 코인 F&G 는 참고용으로 공용 조회 1회)
+    # 비트코인(신호는 120일선) / 리플(비트코인 신호를 따라감). 코인 F&G 는 참고용으로 공용 조회 1회
     c_score, c_rating = fetch_crypto_fear_greed()
 
-    for key, market, name in (("bitcoin", "KRW-BTC", "비트코인"), ("xrp", "KRW-XRP", "리플")):
-        try:
-            df = fetch_upbit_daily(market)
-            assets[key] = build_trend_asset(name, df, "KRW", c_score, c_rating)
-        except Exception as e:  # noqa: BLE001
-            log.error(f"[{name}] 처리 실패: {e}")
-            assets[key] = error_asset(name, "trend_ma120")
+    try:
+        df = fetch_upbit_daily("KRW-BTC")
+        assets["bitcoin"] = build_trend_asset("비트코인", df, "KRW", c_score, c_rating)
+    except Exception as e:  # noqa: BLE001
+        log.error(f"[비트코인] 처리 실패: {e}")
+        assets["bitcoin"] = error_asset("비트코인", "trend_ma120")
+
+    try:
+        df = fetch_upbit_daily("KRW-XRP")
+        assets["xrp"] = build_follow_asset("리플", df, "KRW", assets["bitcoin"], c_score, c_rating)
+    except Exception as e:  # noqa: BLE001
+        log.error(f"[리플] 처리 실패: {e}")
+        assets["xrp"] = error_asset("리플", "follow_asset")
 
     # 김치프리미엄 (업비트 BTC vs 바이낸스 BTC, 원화환산 괴리율)
     try:
