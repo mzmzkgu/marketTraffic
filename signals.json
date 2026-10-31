@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-31T14:00:09.945696+09:00",
+  "updated_at": "2026-10-31T15:00:10.634855+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -20,12 +20,12 @@
       "driver": "trend_ma120",
       "signal": "buy",
       "signal_label": "매수",
-      "ma120": 103245425.0,
+      "ma120": 103246625.0,
       "fg_score": 30.0,
       "fg_rating": "fear",
-      "price": 103978000.0,
+      "price": 104122000.0,
       "high_365d": 164129000.0,
-      "mdd_pct": -36.65,
+      "mdd_pct": -36.56,
       "as_of": "2026-10-31",
       "currency": "KRW",
       "unit_note": ""
@@ -36,13 +36,13 @@
       "signal": "buy",
       "signal_label": "매수",
       "follows": "비트코인",
-      "ref_price": 103978000.0,
-      "ref_ma120": 103245425.0,
+      "ref_price": 104122000.0,
+      "ref_ma120": 103246625.0,
       "fg_score": 30.0,
       "fg_rating": "fear",
-      "price": 1678.0,
+      "price": 1681.0,
       "high_365d": 3747.0,
-      "mdd_pct": -55.22,
+      "mdd_pct": -55.14,
       "as_of": "2026-10-31",
       "currency": "KRW",
       "unit_note": ""
