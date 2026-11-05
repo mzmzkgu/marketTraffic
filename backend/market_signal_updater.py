@@ -70,6 +70,7 @@ YAHOO_SYMBOLS = {
     "usdkrw": "KRW=X",     # USD/KRW
     "usdjpy": "JPY=X",     # USD/JPY
     "us10y": "^TNX",       # 미국채 10년물 금리 (% 단위, 예: 4.25)
+    "vix": "^VIX",         # VIX 변동성지수 (참고용 지표, 매매 신호 없음)
 }
 
 US10Y_BUY_YIELD = 5.0   # 미국채 10년물 금리가 이 값(%) 이상이면 매수 (사용자와 합의)
@@ -537,6 +538,34 @@ def build_yield_asset(name_kr, df, days: int = 365):
     }
 
 
+def build_vix_asset(name_kr, df, days: int = 365):
+    """VIX 변동성지수. 참고용 지표라 매수/매도 신호는 없고(signal = info), 수준만 알려줌.
+    수준 구분은 시장에서 흔히 쓰는 기준: 20 미만 안정 / 20~30 불안 / 30 이상 공포.
+    """
+    recent = df.tail(days)
+    current = float(recent["close"].iloc[-1])
+    high = float(recent["close"].max())
+    low = float(recent["close"].min())
+    as_of = recent["date"].iloc[-1].strftime("%Y-%m-%d")
+    if current < 20:
+        state = "안정"
+    elif current < 30:
+        state = "불안"
+    else:
+        state = "공포"
+    return {
+        "name_kr": name_kr,
+        "driver": "level_info",
+        "signal": "info",
+        "signal_label": "참고",
+        "vix": round(current, 2),
+        "vix_state": state,
+        "high_365d": round(high, 2),
+        "low_365d": round(low, 2),
+        "as_of": as_of,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 메인
 # ---------------------------------------------------------------------------
@@ -616,6 +645,14 @@ def compute_all_assets() -> dict:
     except Exception as e:  # noqa: BLE001
         log.error(f"[미국채 10년물] 처리 실패: {e}")
         assets["us10y"] = error_asset("미국채 10년물", "yield_level")
+
+    # VIX 변동성지수 (참고용)
+    try:
+        vix_df = fetch_yahoo_daily(YAHOO_SYMBOLS["vix"])
+        assets["vix"] = build_vix_asset("VIX", vix_df)
+    except Exception as e:  # noqa: BLE001
+        log.error(f"[VIX] 처리 실패: {e}")
+        assets["vix"] = error_asset("VIX", "level_info")
 
     return assets
 
