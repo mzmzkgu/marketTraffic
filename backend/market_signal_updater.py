@@ -338,6 +338,9 @@ def error_asset(name_kr: str, driver: str) -> dict:
 
 def build_fng_asset(name_kr, df, score, rating, currency, unit_note=""):
     current, high, mdd, as_of = price_stats(df)
+    # 전일 종가 대비 등락률 (줍줍매매 앱 등에서 "전일비"로 사용)
+    prev = float(df["close"].iloc[-2]) if len(df) >= 2 else None
+    change_pct = round((current / prev - 1) * 100, 2) if prev else None
 
     if score is None or rating is None:
         signal, label = "unknown", "신호 없음(소스 오류)"
@@ -356,6 +359,8 @@ def build_fng_asset(name_kr, df, score, rating, currency, unit_note=""):
         "fg_score": score,
         "fg_rating": rating,
         "price": round(current, 2),
+        "prev_close": round(prev, 2) if prev else None,
+        "change_pct": change_pct,
         "high_365d": round(high, 2),
         "mdd_pct": round(mdd, 2) if mdd is not None else None,
         "as_of": as_of,
