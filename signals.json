@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-21T14:00:10.976314+09:00",
+  "updated_at": "2026-11-21T15:00:10.127863+09:00",
   "assets": {
     "nasdaq": {
       "name_kr": "나스닥",
@@ -22,12 +22,12 @@
       "driver": "trend_ma120",
       "signal": "sell",
       "signal_label": "매도",
-      "ma120": 103382433.3333,
+      "ma120": 103377766.6667,
       "fg_score": 12.0,
       "fg_rating": "extreme fear",
-      "price": 77685000.0,
+      "price": 77125000.0,
       "high_365d": 142160000.0,
-      "mdd_pct": -45.35,
+      "mdd_pct": -45.75,
       "as_of": "2026-11-21",
       "currency": "KRW",
       "unit_note": ""
@@ -38,13 +38,13 @@
       "signal": "sell",
       "signal_label": "매도",
       "follows": "비트코인",
-      "ref_price": 77685000.0,
-      "ref_ma120": 103382433.3333,
+      "ref_price": 77125000.0,
+      "ref_ma120": 103377766.6667,
       "fg_score": 12.0,
       "fg_rating": "extreme fear",
-      "price": 1209.0,
+      "price": 1204.0,
       "high_365d": 3403.0,
-      "mdd_pct": -64.47,
+      "mdd_pct": -64.62,
       "as_of": "2026-11-21",
       "currency": "KRW",
       "unit_note": ""
@@ -54,7 +54,7 @@
       "driver": "kimchi_premium",
       "signal": "hold",
       "signal_label": "관망",
-      "premium_pct": 3.37,
+      "premium_pct": 3.45,
       "high_365d": 4.55,
       "low_365d": -3.5,
       "as_of": "2026-11-21"
